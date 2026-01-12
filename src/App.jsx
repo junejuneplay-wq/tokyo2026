@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom/client';
 import { 
   MapPin, 
   Train, 
@@ -7,17 +8,42 @@ import {
   CloudRain, 
   Cloud, 
   Clock, 
-  Navigation,
   ArrowRight,
   Info,
-  Thermometer,
   Signpost,
-  Image as ImageIcon,
   ExternalLink,
-  Search
+  Search,
+  CheckSquare,
+  Briefcase,
+  RotateCcw
 } from 'lucide-react';
 
-// --- 模擬數據 (2026年版) ---
+// ==========================================
+// 0. CSS 樣式注入 (確保樣式正確載入)
+// ==========================================
+const styleElement = document.createElement('style');
+styleElement.textContent = `
+  .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  body { margin: 0; background-color: #0f1016; font-family: system-ui, -apple-system, sans-serif; }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+`;
+document.head.appendChild(styleElement);
+
+// ==========================================
+// 1. 行程數據 (Day 1 - Day 11)
+// ==========================================
 
 const scheduleData = [
   {
@@ -29,7 +55,7 @@ const scheduleData = [
         time: "14:25",
         title: "到達成田機場 (NRT)",
         type: "flight",
-        remark: "辦理入境手續，領取行李"
+        remark: "辦理入境手續，領取行李，購買metro pass"
       },
       {
         time: "15:58",
@@ -93,7 +119,7 @@ const scheduleData = [
         mapQuery: "DARUMA STORE TOKYO Shibuya",
         remark: "毛線愛好者必去",
         openingHours: "11:00 - 19:00",
-        image: "https://placehold.co/600x300/e91e63/FFF?text=DARUMA+YARN+TOKYO"
+        image: "https://image.jimcdn.com/app/cms/image/transf/none/path/sddc28d7a7be52aca/image/i8c9a3e5ec00d7d5f/version/1727265408/image.jpg"
       }
     ]
   },
@@ -114,7 +140,7 @@ const scheduleData = [
         mapQuery: "1-27 Akagi Motomachi, Shinjuku City, Tokyo 162-0817, Japan",
         remark: "需在 16:00 前購買御朱印",
         openingHours: "09:00 - 17:00",
-        image: "https://placehold.co/600x300/3f51b5/FFF?text=Seiryuji+Temple"
+        image: "https://scontent.fhkg4-2.fna.fbcdn.net/v/t39.30808-6/475903702_1150924960019362_5847423516971838397_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=988bpn7dtTMQ7kNvwFCJUrw&_nc_oc=AdnJ2p-jWgBq3o7MgvO4DFjlUYtDoWkYG2Yvw-VWgsyS4cTZrS7A8OTIh4dsbr4RU38&_nc_zt=23&_nc_ht=scontent.fhkg4-2.fna&_nc_gid=_PyAumJdElxC9bUzje3lXA&oh=00_Afoxji68PWLCcBtRlIL2PTxs9Nx1rdadvbSP_WaA-WpI0Q&oe=696A98C9"
       },
       {
         time: "下午",
@@ -123,10 +149,10 @@ const scheduleData = [
         mapQuery: "1 Chome-1-15 Nishiwaseda, Shinjuku City, Tokyo 169-0051, Japan",
         remark: "花手水名所，請保持安靜",
         openingHours: "09:00 - 16:00",
-        image: "https://placehold.co/600x300/673ab7/FFF?text=Hourinji+Temple"
+        image: "https://lh3.googleusercontent.com/gps-cs-s/AG0ilSxQ2xMNzDUx8XMCHJZXVzs4bTQ4VlYMbg3tk01Kkb4m2ji2aOCHpFwu06hwc0UHdE5plH58ecC-j4WTf50ZGBqozUHrYDRWtbxqqF2wUflyl9S2Ky5ptDeM-kGOFBw4ozrcow6XHkdKBHgA=s680-w680-h510-rw"
       },
       {
-        time: "晚間",
+        time: "下午",
         title: "新宿區域",
         type: "activity",
         transportInfo: {
@@ -135,6 +161,14 @@ const scheduleData = [
           cost: "¥170",
           time: "9 分鐘"
         }
+      },
+      {
+        time: "13:30",
+        title: "jojoen",
+        type: "highlight",
+        mapQuery: "Jojoen Shinjuku Central East Exit Branch",
+        remark: "午市燒肉",
+        image: "https://tblg.k-img.com/resize/640x360c/restaurant/images/Rvw/279857/34ac488b61f26eb29c785c64774cd7b2.jpg?token=fac39fe&api=v2"
       }
     ]
   },
@@ -167,7 +201,7 @@ const scheduleData = [
         mapQuery: "Artek Tokyo Store Omotesando",
         remark: "北歐設計家具店 (週二公休)",
         openingHours: "11:00 - 19:00",
-        image: "https://placehold.co/600x300/795548/FFF?text=Artek+Tokyo+Store"
+        image: "https://lh3.googleusercontent.com/p/AF1QipO7zuKfvDKRM6RWyMivND_478j4NBW1ZmEMQrco=s680-w680-h510-rw"
       }
     ]
   },
@@ -188,7 +222,7 @@ const scheduleData = [
         mapQuery: "Warner Bros. Studio Tour Tokyo",
         remark: "請預留 3-4 小時參觀時間，需提前預約",
         openingHours: "09:30 - 19:30",
-        image: "https://placehold.co/600x300/212121/FFF?text=Warner+Bros.+Studio+Tour",
+        image: "https://lovetogo.tw/202401-tokyo/harry-potter/photo/20240204-1224-7557.jpg",
         transportInfo: {
           route: "池袋 (西武池袋線) → 豐島園站",
           platform: "池袋: 2/3號月台 (西武線)",
@@ -227,7 +261,7 @@ const scheduleData = [
         mapQuery: "G.Itoya Ginza",
         remark: "百年文具店",
         openingHours: "10:00 - 20:00",
-        image: "https://placehold.co/600x300/f44336/FFF?text=G.Itoya+Ginza"
+        image: "https://media.timeout.com/images/106076425/750/422/image.jpg"
       },
       {
         time: "晚間",
@@ -280,16 +314,16 @@ const scheduleData = [
         mapQuery: "ALMOND Tokyo Station",
         remark: "東京站一番街 Gift Palette 必買甜點",
         openingHours: "09:30 - 20:30",
-        image: "https://placehold.co/600x300/ff9800/FFF?text=ALMOND+Brulee"
+        image: "https://cdn.cybassets.com/s/files/25322/ckeditor/pictures/content_2e3fce49-1cb4-4abb-b2ed-f382860feb0a.jpg"
       },
       {
         time: "午後",
         title: "OZEKI 東京營業所",
         type: "highlight",
-        mapQuery: "OZEKI Tokyo Showroom Embroidery",
-        remark: "刺繡愛好者參觀 (平日開放)",
+        mapQuery: "OZEKI Tokyo Gallery",
+        remark: "野口勇燈",
         openingHours: "09:30 - 17:30",
-        image: "https://placehold.co/600x300/009688/FFF?text=OZEKI+Embroidery"
+        image: "https://lh3.googleusercontent.com/gps-cs-s/AG0ilSzbqYa2usHgayDt4DJP8LP8-jC2doEM4nodCR69yC4uOkdvGv73foS4WUwmw6Jss4lWaL1PUTuciTiBXV6s92BoTKl60uAR7xJmeyHKdCOl4YLgyZrlayYSpLUc9LBbzTTyF2BNUw=w408-h306-k-no"
       }
     ]
   },
@@ -379,7 +413,7 @@ const scheduleData = [
         mapQuery: "Chiikawa Shop Kawagoe",
         remark: "位於川越藏造街道區域",
         openingHours: "10:00 - 18:00",
-        image: "https://placehold.co/600x300/ffcdd2/000?text=Chiikawa+Kawagoe"
+        image: "https://cdn.cheapoguides.com/wp-content/uploads/sites/2/2025/08/P1048520-1024x600.jpg"
       }
     ]
   },
@@ -436,14 +470,75 @@ const scheduleData = [
   }
 ];
 
-// --- 組件 ---
+// ==========================================
+// 2. 行李清單數據 (預設)
+// ==========================================
+
+const defaultPackingList = [
+  {
+    category: "證件與錢財",
+    items: [
+      { id: "p1", name: "護照 (Passport)", checked: false },
+      { id: "p2", name: "機票 / 登機證", checked: false },
+      { id: "p3", name: "現金 (日幣 Yen)", checked: false },
+      { id: "p4", name: "信用卡 (海外開通)", checked: false },
+      { id: "p5", name: "Suica / Pasmo", checked: false },
+      { id: "p6", name: "Visit Japan Web QR", checked: false },
+      { id: "p7", name: "酒店預訂確認單", checked: false }
+    ]
+  },
+  {
+    category: "電子產品",
+    items: [
+      { id: "e1", name: "手機 & 充電線", checked: false },
+      { id: "e2", name: "行動電源", checked: false },
+      { id: "e3", name: "轉接頭 (雙扁腳)", checked: false },
+      { id: "e4", name: "SIM 卡 / WiFi", checked: false },
+      { id: "e5", name: "相機 & 記憶卡", checked: false }
+    ]
+  },
+  {
+    category: "衣物 (冬季)",
+    items: [
+      { id: "c1", name: "羽絨外套", checked: false },
+      { id: "c2", name: "發熱衣 (Heattech)", checked: false },
+      { id: "c3", name: "毛衣 / 衛衣", checked: false },
+      { id: "c4", name: "長褲 / 裙子", checked: false },
+      { id: "c5", name: "內衣褲 / 襪子", checked: false },
+      { id: "c6", name: "圍巾 / 手套", checked: false },
+      { id: "c7", name: "好走的鞋子", checked: false }
+    ]
+  },
+  {
+    category: "個人護理",
+    items: [
+      { id: "t1", name: "牙刷 / 牙膏", checked: false },
+      { id: "t2", name: "護膚品", checked: false },
+      { id: "t3", name: "個人藥物", checked: false },
+      { id: "t4", name: "口罩 / 濕紙巾", checked: false }
+    ]
+  },
+  {
+    category: "雜項",
+    items: [
+      { id: "m1", name: "摺疊雨傘", checked: false },
+      { id: "m2", name: "環保購物袋", checked: false },
+      { id: "m3", name: "原子筆", checked: false }
+    ]
+  }
+];
+
+// ==========================================
+// 3. UI 組件
+// ==========================================
 
 const WeatherIcon = ({ type, className }) => {
+  const iconClass = className || "w-4 h-4";
   switch (type) {
-    case 'sunny': return <Sun className={`text-yellow-300 ${className}`} />;
-    case 'cloudy': return <Cloud className={`text-gray-200 ${className}`} />;
-    case 'rain': return <CloudRain className={`text-blue-300 ${className}`} />;
-    default: return <Sun className={`text-yellow-300 ${className}`} />;
+    case 'sunny': return <Sun className={`text-yellow-300 ${iconClass}`} />;
+    case 'cloudy': return <Cloud className={`text-gray-200 ${iconClass}`} />;
+    case 'rain': return <CloudRain className={`text-blue-300 ${iconClass}`} />;
+    default: return <Sun className={`text-yellow-300 ${iconClass}`} />;
   }
 };
 
@@ -458,15 +553,12 @@ const TransportCard = ({ info }) => (
         <ArrowRight size={14} className="mt-1 flex-shrink-0 text-white/60" />
         <span className="font-medium">{info.route}</span>
       </div>
-      
-      {/* 乘車月台資訊 */}
       {info.platform && (
         <div className="flex items-start gap-2 text-yellow-100/90 text-xs my-1">
           <Signpost size={12} className="mt-0.5 flex-shrink-0" />
           <span>{info.platform}</span>
         </div>
       )}
-
       <div className="flex justify-between items-center text-xs text-white/70 pl-5 pt-1">
         <span className="bg-white/10 px-2 py-0.5 rounded text-white/90 border border-white/10">{info.cost}</span>
         <span>{info.time}</span>
@@ -478,25 +570,18 @@ const TransportCard = ({ info }) => (
 
 const EventCard = ({ event }) => {
   const isHighlight = event.type === 'highlight';
-  
   return (
     <div className={`relative pl-4 pb-10 border-l-2 ${isHighlight ? 'border-pink-400' : 'border-white/10'} last:border-0 last:pb-0`}>
-      {/* Timeline Dot */}
       <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white/50 ${isHighlight ? 'bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.6)]' : 'bg-indigo-600'}`}></div>
-      
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-white/60 bg-black/20 px-2 py-0.5 rounded border border-white/5">{event.time}</span>
           {isHighlight && <span className="text-[10px] font-bold bg-pink-500/90 text-white px-1.5 py-0.5 rounded shadow-sm">重點</span>}
         </div>
-        
         <h3 className={`text-lg font-medium leading-tight mt-1 ${isHighlight ? 'text-pink-100' : 'text-white'}`}>
           {event.title}
         </h3>
-        
         {event.subtitle && <p className="text-sm text-white/60">{event.subtitle}</p>}
-        
-        {/* Landmark Image with Google Search Link */}
         {event.image && (
           <a 
             href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(event.title + " " + (event.subtitle || "") + " " + "Tokyo")}`}
@@ -509,7 +594,6 @@ const EventCard = ({ event }) => {
               alt={event.title} 
               className="w-full h-32 object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
             />
-            {/* Overlay hint */}
             <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors flex items-center justify-center">
                <div className="bg-black/50 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                  <Search size={20} className="text-white" />
@@ -517,20 +601,17 @@ const EventCard = ({ event }) => {
             </div>
             <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/60 px-2 py-1 rounded text-[10px] text-white/90 backdrop-blur-sm">
                 <ExternalLink size={10} />
-                <span>Google 圖片搜尋</span>
+                <span>Google 圖片</span>
             </div>
           </a>
         )}
-
         <div className="flex flex-col gap-1 mt-1">
-          {/* Opening Hours Info */}
           {event.openingHours && (
              <div className="flex items-center gap-1.5 text-xs text-yellow-200 bg-yellow-500/10 p-1.5 rounded w-fit border border-yellow-500/20">
               <Clock size={12} className="flex-shrink-0" />
               <span>營業時間: {event.openingHours}</span>
             </div>
           )}
-
           {event.remark && (
             <div className="flex items-start gap-1.5 text-sm text-indigo-200 bg-indigo-500/20 p-2 rounded border border-indigo-500/20">
               <Info size={14} className="mt-0.5 flex-shrink-0" />
@@ -538,8 +619,6 @@ const EventCard = ({ event }) => {
             </div>
           )}
         </div>
-        
-        {/* Address & Map Button */}
         {event.mapQuery && (
           <a 
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.mapQuery)}`}
@@ -548,14 +627,10 @@ const EventCard = ({ event }) => {
             className="mt-2 flex items-center gap-2 w-fit bg-white/5 hover:bg-white/20 transition-all px-3 py-1.5 rounded-full text-xs text-white border border-white/10 hover:border-white/30"
           >
             <MapPin size={12} />
-            <span>Google Map 導航</span>
+            <span>Google Map</span>
           </a>
         )}
-
-        {/* Transport Logic */}
         {event.transportInfo && <TransportCard info={event.transportInfo} />}
-        
-        {/* Backup Plan */}
         {event.backup && (
           <div className="mt-2 text-xs text-white/40 italic pl-1 border-l-2 border-white/10">
             備案: {event.backup}
@@ -566,99 +641,238 @@ const EventCard = ({ event }) => {
   );
 };
 
-export default function App() {
+// ==========================================
+// 4. Main App Component
+// ==========================================
+
+const App = () => {
+  const [activeTab, setActiveTab] = useState('itinerary'); 
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-  const currentDay = scheduleData[selectedDayIndex];
+  const [packingItems, setPackingItems] = useState(defaultPackingList);
+  
+  // LocalStorage Init
+  useEffect(() => {
+    const saved = localStorage.getItem('tokyo_trip_packing_v1');
+    if (saved) {
+      try {
+        setPackingItems(JSON.parse(saved));
+      } catch (e) {
+        console.error("Load failed", e);
+      }
+    }
+  }, []);
+
+  // Save on change
+  useEffect(() => {
+    localStorage.setItem('tokyo_trip_packing_v1', JSON.stringify(packingItems));
+  }, [packingItems]);
+
+  const toggleItem = (categoryId, itemId) => {
+    setPackingItems(prev => prev.map(cat => {
+      if (cat.category === categoryId) {
+        return {
+          ...cat,
+          items: cat.items.map(item => 
+            item.id === itemId ? { ...item, checked: !item.checked } : item
+          )
+        };
+      }
+      return cat;
+    }));
+  };
+
+  const resetChecklist = () => {
+    if(window.confirm("確定要重置？")) setPackingItems(defaultPackingList);
+  };
+
+  const totalItems = packingItems.reduce((acc, cat) => acc + cat.items.length, 0);
+  const checkedItems = packingItems.reduce((acc, cat) => acc + cat.items.filter(i => i.checked).length, 0);
+  const progress = totalItems === 0 ? 0 : Math.round((checkedItems / totalItems) * 100);
+
+  const currentDay = scheduleData[selectedDayIndex] || scheduleData[0];
 
   return (
     <div className="min-h-screen bg-[#0f1016] text-white font-sans selection:bg-pink-500/30 overflow-hidden relative">
       
-      {/* Background Ambience (Enhanced Liquid Effect) */}
+      {/* Background Ambience */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-purple-900/40 rounded-full blur-[120px] mix-blend-screen animate-pulse duration-[5000ms]"></div>
-        <div className="absolute bottom-[-10%] right-[-20%] w-[700px] h-[700px] bg-blue-900/30 rounded-full blur-[120px] mix-blend-screen animate-pulse delay-1000 duration-[7000ms]"></div>
-        <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-pink-900/20 rounded-full blur-[100px] mix-blend-screen"></div>
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-purple-900/40 rounded-full blur-[120px] mix-blend-screen opacity-50"></div>
+        <div className="absolute bottom-[-10%] right-[-20%] w-[700px] h-[700px] bg-blue-900/30 rounded-full blur-[120px] mix-blend-screen opacity-50"></div>
       </div>
 
       <div className="relative z-10 max-w-md mx-auto h-screen flex flex-col">
         
-        {/* Header (Simplified) */}
-        <header className="pt-8 pb-2 px-6">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60 tracking-tight">
+        {/* Header */}
+        <header className="pt-8 pb-4 px-6">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60">
             Tokyo Trip
           </h1>
           <p className="text-sm text-white/40 font-medium tracking-widest uppercase mt-1">2026 Winter Itinerary</p>
         </header>
 
-        {/* Date Selector (with Weather) */}
-        <div className="px-6 py-4 overflow-x-auto no-scrollbar flex gap-3 snap-x pb-8">
-          {scheduleData.map((data, index) => {
-            const isSelected = selectedDayIndex === index;
-            return (
-              <button
-                key={index}
-                onClick={() => setSelectedDayIndex(index)}
-                className={`flex-shrink-0 snap-center flex flex-col items-center justify-between w-[4.5rem] h-24 p-2 rounded-2xl border transition-all duration-300 group relative overflow-hidden ${
-                  isSelected
-                    ? 'bg-white/10 border-pink-400/50 shadow-[0_0_20px_rgba(236,72,153,0.3)] translate-y-[-4px]'
-                    : 'bg-white/5 border-white/5 hover:bg-white/10 text-white/50'
-                }`}
-              >
-                {/* Active Indicator Background */}
-                {isSelected && <div className="absolute inset-0 bg-gradient-to-b from-pink-500/10 to-transparent pointer-events-none"></div>}
-
-                <div className="flex flex-col items-center gap-1 z-10">
-                  <span className={`text-[10px] font-bold tracking-wide uppercase ${isSelected ? 'text-pink-300' : ''}`}>{data.day}</span>
-                  <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-white/60'}`}>
-                    {data.date.split('月')[1].split(' ')[0].replace('日','')}
-                  </span>
-                </div>
-                
-                {/* Weather on Button */}
-                <div className="flex flex-col items-center z-10">
-                  <WeatherIcon type={data.weather.type} className={`w-5 h-5 mb-0.5 ${isSelected ? 'opacity-100' : 'opacity-60 grayscale group-hover:grayscale-0 transition-all'}`} />
-                  <span className="text-[10px] font-medium">{data.weather.temp}</span>
-                </div>
-              </button>
-            )
-          })}
+        {/* Tab Nav */}
+        <div className="px-6 pb-2 flex gap-4">
+          <button 
+            onClick={() => setActiveTab('itinerary')}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'itinerary' ? 'bg-white/20 text-white shadow-lg border border-white/20' : 'text-white/40 hover:bg-white/5'}`}
+          >
+             <Calendar size={16} /> 行程表
+          </button>
+          <button 
+            onClick={() => setActiveTab('packing')}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'packing' ? 'bg-pink-500/30 text-white shadow-lg border border-pink-500/30' : 'text-white/40 hover:bg-white/5'}`}
+          >
+             <Briefcase size={16} /> 行李清單
+          </button>
         </div>
 
-        {/* Main Content Area - Glass Card */}
-        <div className="flex-1 px-4 pb-6 overflow-hidden flex flex-col">
-          <div className="flex-1 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-t-[2.5rem] shadow-2xl flex flex-col overflow-hidden relative">
-            
-            {/* Glass Reflection Highlight */}
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-
-            {/* Content Scroll */}
-            <div className="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar">
-              <div className="flex items-center gap-2 mb-8 ml-1 sticky top-0 bg-[#16171f]/80 backdrop-blur-xl p-2 -ml-3 -mr-3 rounded-xl border border-white/5 z-20">
-                <div className="bg-pink-500 p-1.5 rounded-lg shadow-lg shadow-pink-500/20">
-                  <Calendar size={16} className="text-white" />
+        {/* Content Area */}
+        <div className="flex-1 px-4 pb-4 overflow-hidden flex flex-col">
+           
+           {/* === Itinerary View === */}
+           {activeTab === 'itinerary' && (
+             <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+                {/* Date Scroll */}
+                <div className="py-2 overflow-x-auto no-scrollbar flex gap-3 snap-x pb-4">
+                  {scheduleData.map((data, index) => {
+                    const isSelected = selectedDayIndex === index;
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedDayIndex(index)}
+                        className={`flex-shrink-0 snap-center flex flex-col items-center justify-between w-[4.5rem] h-24 p-2 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
+                          isSelected
+                            ? 'bg-white/10 border-pink-400/50 shadow-lg translate-y-[-2px]'
+                            : 'bg-white/5 border-white/5 text-white/50'
+                        }`}
+                      >
+                        {isSelected && <div className="absolute inset-0 bg-gradient-to-b from-pink-500/10 to-transparent"></div>}
+                        <div className="flex flex-col items-center gap-1 z-10">
+                          <span className={`text-[10px] font-bold tracking-wide uppercase ${isSelected ? 'text-pink-300' : ''}`}>{data.day}</span>
+                          <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-white/60'}`}>
+                            {data.date.split('月')[1].split(' ')[0].replace('日','')}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-center z-10">
+                          <WeatherIcon type={data.weather.type} className={`w-5 h-5 mb-0.5 ${isSelected ? 'opacity-100' : 'opacity-60 grayscale'}`} />
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white leading-none">{currentDay.date}</h2>
-                  <p className="text-xs text-white/50 mt-1">{currentDay.day} • {currentDay.weather.desc}</p>
-                </div>
-              </div>
-              
-              <div className="mt-2 ml-1">
-                {currentDay.events.map((event, idx) => (
-                  <EventCard key={idx} event={event} />
-                ))}
-              </div>
 
-              {/* End of Day decoration */}
-              <div className="mt-12 mb-6 flex flex-col items-center justify-center opacity-20 gap-3">
-                <div className="w-[1px] h-12 bg-gradient-to-b from-white to-transparent"></div>
-                <div className="w-2 h-2 rounded-full border border-white"></div>
-              </div>
-            </div>
-          </div>
+                {/* Event List Container */}
+                <div className="flex-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-t-[2rem] shadow-2xl flex flex-col overflow-hidden">
+                    <div className="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar">
+                      <div className="flex items-center gap-2 mb-8 sticky top-0 bg-[#16171f]/90 backdrop-blur p-3 -mx-3 rounded-xl border border-white/5 z-20">
+                        <div className="bg-pink-500 p-1.5 rounded-lg shadow-lg">
+                          <Calendar size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold text-white leading-none">{currentDay.date}</h2>
+                          <p className="text-xs text-white/50 mt-1">{currentDay.day} • {currentDay.weather.desc}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-2 ml-1">
+                        {currentDay.events.map((event, idx) => (
+                          <EventCard key={idx} event={event} />
+                        ))}
+                      </div>
+                      <div className="mt-12 mb-6 flex flex-col items-center justify-center opacity-20 gap-3">
+                        <div className="w-[1px] h-12 bg-gradient-to-b from-white to-transparent"></div>
+                        <div className="w-2 h-2 rounded-full border border-white"></div>
+                      </div>
+                    </div>
+                </div>
+             </div>
+           )}
+
+           {/* === Packing View === */}
+           {activeTab === 'packing' && (
+             <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+                <div className="mb-4 bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-lg">
+                   <div className="flex justify-between items-end mb-2">
+                     <div className="flex flex-col">
+                        <span className="text-xs text-white/60 uppercase tracking-wider">準備進度</span>
+                        <span className="text-2xl font-bold text-white">{progress}%</span>
+                     </div>
+                     <div className="text-xs text-white/40">
+                       {checkedItems} / {totalItems}
+                     </div>
+                   </div>
+                   <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden">
+                     <div 
+                        className="bg-gradient-to-r from-pink-500 to-purple-500 h-full rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${progress}%` }}
+                     ></div>
+                   </div>
+                </div>
+
+                <div className="flex-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-t-[2rem] rounded-b-2xl shadow-2xl flex flex-col overflow-hidden">
+                   <div className="flex-1 overflow-y-auto p-4 scroll-smooth custom-scrollbar">
+                      <div className="flex justify-end mb-2">
+                        <button onClick={resetChecklist} className="text-xs text-white/30 hover:text-white flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-white/10">
+                          <RotateCcw size={10} /> 重置
+                        </button>
+                      </div>
+
+                      <div className="space-y-6 pb-8">
+                        {packingItems.map((category) => (
+                          <div key={category.category}>
+                             <h3 className="text-sm font-bold text-pink-200/80 mb-3 px-2 border-l-2 border-pink-500 pl-2">
+                               {category.category}
+                             </h3>
+                             <div className="space-y-2">
+                               {category.items.map((item) => (
+                                 <div 
+                                    key={item.id}
+                                    onClick={() => toggleItem(category.category, item.id)}
+                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${
+                                      item.checked 
+                                        ? 'bg-green-500/10 border-green-500/30' 
+                                        : 'bg-white/5 border-white/5 hover:bg-white/10'
+                                    }`}
+                                 >
+                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                                      item.checked ? 'bg-green-500 border-green-500 text-white' : 'border-white/30 text-transparent'
+                                    }`}>
+                                      <CheckSquare size={12} fill="currentColor" />
+                                    </div>
+                                    <span className={`text-sm flex-1 ${item.checked ? 'text-white/40 line-through' : 'text-white'}`}>
+                                      {item.name}
+                                    </span>
+                                 </div>
+                               ))}
+                             </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="h-4"></div>
+                   </div>
+                </div>
+             </div>
+           )}
+
         </div>
-
       </div>
     </div>
   );
+};
+
+// ==========================================
+// 5. Entry Point Logic
+// ==========================================
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 }
+
+// Default export for safety
+export default App;
